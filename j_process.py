@@ -60,7 +60,7 @@ __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 
 # TF+KMeans Clustering
 def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_name=None,
-                      epochs=20, batch_size=512, verbose=1):
+                      epochs=50, batch_size=512, verbose=1):
     """
     Run TensorFlow autoencoder + KMeans clustering.
 
