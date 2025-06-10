@@ -211,35 +211,62 @@ def plot_yes_no_by_cluster(df, cluster_col, binary_features, yes_value='Yes'):
         plt.show()
 
 __docstrings__['plot_yes_no_by_cluster'] = plot_yes_no_by_cluster.__doc__
-def run_logistic_model(df_train, df_val, features, target, model_params=None, encoder_params=None):
+def run_logistic_model(
+    df_train,
+    df_val,
+    features,
+
+    target,
+    C=1.0,
+    penalty='l2',
+    solver='lbfgs',
+    max_iter=1000,
+    encoder_drop=None,
+    encoder_dtype=None,
+    encoder_min_frequency=None
+):
     """
     Train and evaluate a logistic regression classifier using one-hot encoding.
 
     Args:
         df_train (DataFrame): Training set.
         df_val (DataFrame): Validation set.
-        features (list): List of categorical feature columns.
+        features (list): List of categorical feature column names.
         target (str): Target column name.
-        model_params (dict): Parameters for LogisticRegression.
-        encoder_params (dict): Parameters for OneHotEncoder.
+        C (float): Inverse of regularization strength. Smaller values specify stronger regularization.
+        penalty (str): Norm used in the penalization ('l1', 'l2', 'elasticnet', or 'none').
+        solver (str): Algorithm to use in the optimization problem ('liblinear', 'lbfgs', etc.).
+        max_iter (int): Maximum number of iterations taken for the solvers to converge.
+        encoder_drop (str or None): Strategy to drop one of the categories per feature ('first', 'if_binary', or None).
+        encoder_dtype (np.dtype or None): Desired dtype of the encoded output.
+        encoder_min_frequency (int, float, or None): Minimum frequency for a category to be included.
 
     Returns:
         float: Accuracy on the validation set.
     """
-    model_params = model_params or {}
-    encoder_params = encoder_params or {}
+    encoder = OneHotEncoder(
+        sparse_output=False,
+        handle_unknown='ignore',
+        drop=encoder_drop,
+        dtype=encoder_dtype,
+        min_frequency=encoder_min_frequency
+    )
 
-    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore', **encoder_params)
     X_train = encoder.fit_transform(df_train[features].astype(str))
     X_val = encoder.transform(df_val[features].astype(str))
 
     y_train = df_train[target]
     y_val = df_val[target]
 
-    model = LogisticRegression(max_iter=1000, **model_params)
+    model = LogisticRegression(
+        C=C,
+        penalty=penalty,
+        solver=solver,
+        max_iter=max_iter
+    )
+
     model.fit(X_train, y_train)
     accuracy = accuracy_score(y_val, model.predict(X_val))
     print(f"Validation Accuracy: {accuracy:.4f}")
     return accuracy
-
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
