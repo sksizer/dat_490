@@ -53,7 +53,7 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
         cluster_col_name = f'kmode_n{n_clusters}_i{n_init}_{init_code}'
 
     df[cluster_col_name] = clusters
-    return df,cluster_colname
+    return df,cluster_col_name
 
 __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 

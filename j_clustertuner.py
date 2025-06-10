@@ -2,22 +2,24 @@ import j_process
 def kmode_tune(train_set, val_set, features,target):
     results=[]
     print("Starting Baseline...")
-    base_score = run_logistic_model(train_set,val_set,features,target)
+    base_score = j_process.run_logistic_model(train_set,val_set,features,target)
     results.append({
         "Iteration": 0,
         "Performance": base_score,
         "Train Clusters" : [],
         "Val Clusters" : []
     })
-    i=1
+    i=2
     print("Beginning Trials")
     while i != 65:
         print("Trial")
         print(i)
-        tdf_out, kmodename = run_kmodes_cluster(train_set,features,n_clusters=i)
-        vdf_out, kmodename2 = run_kmodes_cluster(val_set,features,n_clusters=i)
+        print("Clustering training set...")
+        tdf_out, kmodename = j_process.run_kmodes_cluster(train_set,features,n_clusters=i,verbose=0)
+        print("Clustering valadation set...")
+        vdf_out, kmodename2 = j_process.run_kmodes_cluster(val_set,features,n_clusters=i,verbose=0)
         tfeatures = features.copy() + [kmodename]
-        acc_score = run_logistic_model(tdf_out,vdf_out,tfeatures,target)
+        acc_score = j_process.run_logistic_model(tdf_out,vdf_out,tfeatures,target)
         results.append({
             "Iteration": i,
             "Performance": acc_score,
