@@ -103,7 +103,7 @@ def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_
 
     df = df.copy()
     df[cluster_col_name] = cluster_labels
-    return df
+    return df,cluster_col_name
 
 __docstrings__['run_tf_clustering'] = run_tf_clustering.__doc__
 
