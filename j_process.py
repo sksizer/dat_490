@@ -25,7 +25,7 @@ def help(command=None):
 
 # KModes Clustering
 def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
-                       n_init=5, verbose=1, cluster_col_name=None):
+                       n_init=5, verbose=0, cluster_col_name=None):
     """
     Run k-modes clustering on categorical features.
 
@@ -60,7 +60,7 @@ __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 
 # TF+KMeans Clustering
 def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_name=None,
-                      epochs=50, batch_size=512, verbose=1):
+                      epochs=50, batch_size=512, verbose=0):
     """
     Run TensorFlow autoencoder + KMeans clustering.
 
@@ -269,3 +269,45 @@ def run_logistic_model(
     print(f"Validation Accuracy: {accuracy:.4f}")
     return accuracy
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
+def save_if_changed(data, filename, verbose=True):
+    file_path = Path(filename)
+
+    # Detect and clean
+    if isinstance(data, pd.DataFrame):
+        data_clean = data.applymap(
+            lambda v: v.tolist() if isinstance(v, (pd.Series, np.ndarray)) else v
+        )
+    elif isinstance(data, list) and all(isinstance(d, dict) for d in data):
+        data_clean = pd.DataFrame([clean_nested_objects(d) for d in data])
+    else:
+        raise TypeError("Input data must be a DataFrame or list of dictionaries")
+
+    # Check and save
+    if file_path.exists():
+        if verbose:
+            print(f"{filename} exists. Checking for differences...")
+        try:
+            existing_data = pd.read_parquet(file_path)
+            if data_clean.equals(existing_data):
+                if verbose:
+                    print("No changes detected. Skipping save.")
+                return
+            else:
+                if verbose:
+                    print("Changes detected. Overwriting saved file.")
+        except Exception as e:
+            if verbose:
+                print(f"Error loading existing file, saving anyway: {e}")
+    else:
+        if verbose:
+            print(f"{filename} not found. Saving...")
+
+    data_clean.to_parquet(
+        file_path,
+        engine="pyarrow",
+        compression="BROTLI",
+        compression_level=11,
+        index=False
+    )
+    if verbose:
+        print(f"Saved: {filename}")

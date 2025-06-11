@@ -1,8 +1,29 @@
 import j_process
 
 from joblib import Parallel, delayed
+from joblib import cpu_count
 
-def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=8,n_cluster=64):
+def resolve_cores(cores):
+    available = cpu_count()
+    if isinstance(cores, str):
+        cores = cores.strip().lower()
+        if cores == "50%":
+            return available if available == 2 else max(1, available // 2)
+        elif cores == "75%":
+            return max(1, int(available * 0.75))
+        elif cores in {"all", "max"}:
+            return available
+        elif cores == "n-1":
+            return max(1, available - 1)
+        else:
+            raise ValueError(f"Unrecognized core spec: {cores}")
+    elif isinstance(cores, int):
+        return max(1, min(cores, available))
+    else:
+        raise TypeError("`cores` must be an int or string like '50%', 'all', etc.")
+
+
+def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=,n_cluster=64):
     results = []
     der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
@@ -39,7 +60,7 @@ def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=8,n
     if use_multiprocessing:
         print(f"Running in parallel with {cores} cores.")
         parallel_results = Parallel(n_jobs=cores, backend="loky")(
-            delayed(run_trial)(i) for i in range(2, 65)
+            delayed(run_trial)(i) for i in range(2, n_cluster)
         )
         results.extend(parallel_results)
     else:
