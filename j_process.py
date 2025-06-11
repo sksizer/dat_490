@@ -54,6 +54,7 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
 
     df[cluster_col_name] = clusters
     return df,cluster_col_name
+    
 
 __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 
@@ -93,7 +94,7 @@ def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_
     autoencoder.fit(X_encoded, X_encoded, epochs=epochs, batch_size=batch_size, verbose=verbose)
 
     encoder_model = tf.keras.Model(inputs, bottleneck)
-    latent_features = encoder_model.predict(X_encoded)
+    latent_features = encoder_model.predict(X_encoded,verbose=verbose)
 
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     cluster_labels = kmeans.fit_predict(latent_features)
