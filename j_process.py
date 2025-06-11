@@ -35,7 +35,7 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
         n_clusters (int): Number of clusters.
         init_method (str): 'Huang' or 'Cao'.
         n_init (int): Number of initializations.
-        verbose (int): Verbosity.
+        verbose (int): Verbosity.D
         cluster_col_name (str): Custom name for cluster column.
 
     Returns:
@@ -215,7 +215,6 @@ def run_logistic_model(
     df_train,
     df_val,
     features,
-
     target,
     C=1.0,
     penalty='l2',
@@ -240,7 +239,7 @@ def run_logistic_model(
         encoder_drop (str or None): Strategy to drop one of the categories per feature ('first', 'if_binary', or None).
         encoder_dtype (np.dtype or None): Desired dtype of the encoded output.
         encoder_min_frequency (int, float, or None): Minimum frequency for a category to be included.
-
+        
     Returns:
         float: Accuracy on the validation set.
     """

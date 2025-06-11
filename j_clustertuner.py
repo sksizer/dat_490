@@ -2,7 +2,7 @@ import j_process
 
 from joblib import Parallel, delayed
 
-def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=8):
+def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=8,n_cluster=64):
     results = []
     der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
@@ -44,13 +44,13 @@ def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores=8):
         results.extend(parallel_results)
     else:
         print("Running sequentially.")
-        for i in range(2, 65):
+        for i in range(2, n_cluster):
             results.append(run_trial(i))
 
     return results
 
 
-def tflow_tune(train_set, val_set, features):
+def tflow_tune(train_set, val_set, features, n_cluster=64):
     results=[]
     der_var=["ALL_CHRONIC","ALL_CARDIAC","ALL_PUL"]
 
@@ -65,9 +65,9 @@ def tflow_tune(train_set, val_set, features):
         "Train Clusters" : [],
         "Val Clusters" : []
     })
-    i=2
+    
     print("Beginning Trials")
-    while i != 65:
+    for i in range(2,n_cluster):
         print("Trial")
         print(i)
         print("Clustering training set...")
@@ -85,6 +85,6 @@ def tflow_tune(train_set, val_set, features):
             "Train Clusters": tdf_out[kmodename].tolist(),
             "Val Clusters": vdf_out[kmodename2].tolist()
         })
-        i = i + 1
+    
 
     return results
