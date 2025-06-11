@@ -1,6 +1,15 @@
 import j_process
 from IPython.display import clear_output
 import time
+import psutil
+import os
+
+# Logical IDs for P-cores (assuming 0-15 = 8 P-cores x 2 threads)
+p_core_ids = list(range(0, 16))
+
+# Set affinity for current process
+p = psutil.Process(os.getpid())
+p.cpu_affinity(p_core_ids)
 
 from joblib import Parallel, delayed
 from joblib import cpu_count
@@ -46,14 +55,11 @@ def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="n-
         vdf_out, kmodename2 = j_process.run_kmodes_cluster(val_set, features, n_clusters=i, verbose=0)
 
         tfeatures = features.copy() + [kmodename]
-        all_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[0])
-        car_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[1])
-        pul_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[2])
 
         print(f"Finished trial {i}")
         return {
             "Iteration": i,
-            "Performance": [all_acc_score, car_acc_score, pul_acc_score],
+            "Performance": [],
             "Train Clusters": tdf_out[kmodename].tolist(),
             "Val Clusters": vdf_out[kmodename2].tolist()
         }

@@ -1,14 +1,14 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import math
 from kmodes.kmodes import KModes
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 import tensorflow as tf
-
+from IPython.display import display, Markdown
 __docstrings__ = {}
 
 def help(command=None):
@@ -312,3 +312,38 @@ def save_if_changed(data, filename, verbose=True):
     )
     if verbose:
         print(f"Saved: {filename}")
+def resp_tally(df, colnames="all"):
+    if colnames == "all":
+        colnames = df.columns
+    for col in colnames:
+        print(f"\nValue counts for {col}")
+        ig_counts = df[col].value_counts(dropna=False)
+        print(ig_counts)
+
+
+
+
+from IPython.display import display, Markdown
+import pandas as pd
+
+import pandas as pd
+from IPython.display import display
+
+def resp_tally2(df, colnames="all", max_rows=10):
+    if colnames == "all":
+        colnames = df.columns
+
+    tables = []
+    for col in colnames:
+        vc = df[col].value_counts(dropna=False)
+        vc.index = vc.index.astype(str).fillna("NaN")
+        vc = vc.head(max_rows)
+        sub_df = pd.DataFrame({col: vc.index, f"{col}_count": vc.values})
+        tables.append(sub_df.reset_index(drop=True))
+
+    max_len = max(len(t) for t in tables)
+    for i in range(len(tables)):
+        tables[i] = tables[i].reindex(range(max_len)).reset_index(drop=True)
+
+    final = pd.concat(tables, axis=1)
+    display(final)
