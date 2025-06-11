@@ -35,11 +35,13 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
         n_clusters (int): Number of clusters.
         init_method (str): 'Huang' or 'Cao'.
         n_init (int): Number of initializations.
-        verbose (int): Verbosity.D
+        verbose (int): Verbosity.
         cluster_col_name (str): Custom name for cluster column.
 
     Returns:
-        DataFrame with cluster column added.
+        DataFrame with cluster column added,
+        name of the new cluster column,
+        and cost (sum of dissimilarities).
     """
     print(f"Clustering on {len(feature_cols)} features: {feature_cols}")
     X_cluster = df[feature_cols].astype(str)
@@ -53,9 +55,7 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
         cluster_col_name = f'kmode_n{n_clusters}_i{n_init}_{init_code}'
 
     df[cluster_col_name] = clusters
-    return df,cluster_col_name
-    
-
+    return df, cluster_col_name, km.cost_
 __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 
 

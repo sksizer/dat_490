@@ -34,7 +34,9 @@ def resolve_cores(cores):
         raise TypeError("`cores` must be an int or string like '50%', 'all', etc.")
 
 
-def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="n-1",n_cluster=64):
+from joblib import Parallel, delayed
+
+def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="50%", n_cluster=64):
     results = []
     der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
@@ -42,26 +44,40 @@ def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="n-
     base_score_all = j_process.run_logistic_model(train_set, val_set, features, der_var[0])
     base_score_car = j_process.run_logistic_model(train_set, val_set, features, der_var[1])
     base_score_pul = j_process.run_logistic_model(train_set, val_set, features, der_var[2])
+    
     results.append({
         "Iteration": 0,
         "Performance": [base_score_all, base_score_car, base_score_pul],
         "Train Clusters": [],
-        "Val Clusters": []
+        "Val Clusters": [],
+        "Train Cost": None,
+        "Val Cost": None
     })
 
     def run_trial(i):
         print(f"Starting trial {i}")
-        tdf_out, kmodename = j_process.run_kmodes_cluster(train_set, features, n_clusters=i, verbose=0)
-        vdf_out, kmodename2 = j_process.run_kmodes_cluster(val_set, features, n_clusters=i, verbose=0)
+        
+        # Run k-modes clustering for train and val sets
+        tdf_out, kmodename, train_cost = j_process.run_kmodes_cluster(train_set, features, n_clusters=i, verbose=0)
+        vdf_out, kmodename2, val_cost = j_process.run_kmodes_cluster(val_set, features, n_clusters=i, verbose=0)
 
+        # Prepare new features including the clustering result for logistic model (optional)
         tfeatures = features.copy() + [kmodename]
+
+        # (Optional): Evaluate performance if desired here
+        # perf_all = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[0])
+        # perf_car = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[1])
+        # perf_pul = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[2])
+        # performance = [perf_all, perf_car, perf_pul]
 
         print(f"Finished trial {i}")
         return {
             "Iteration": i,
             "Performance": [],
             "Train Clusters": tdf_out[kmodename].tolist(),
-            "Val Clusters": vdf_out[kmodename2].tolist()
+            "Val Clusters": vdf_out[kmodename2].tolist(),
+            "Train Cost": train_cost,
+            "Val Cost": val_cost
         }
 
     print("Beginning Trials")
@@ -77,7 +93,6 @@ def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="n-
             results.append(run_trial(i))
 
     return results
-
 
 
 def print_trial_status(i, accs, total=None, elapsed=None):
