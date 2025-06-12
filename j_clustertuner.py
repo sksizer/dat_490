@@ -37,64 +37,40 @@ def resolve_cores(cores):
 
 from joblib import Parallel, delayed
 
-def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="50%", n_cluster=1024):
+from joblib import Parallel, delayed
+import numpy as np
+
+def kmode_tune(train_set, features, s_cluster=2, n_cluster=256, n_trials=5, use_multiprocessing=True, cores="50%"):
     results = []
-    der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
-    print("Starting Baseline...")
-    base_score_all = j_process.run_logistic_model(train_set, val_set, features, der_var[0])
-    base_score_car = j_process.run_logistic_model(train_set, val_set, features, der_var[1])
-    base_score_pul = j_process.run_logistic_model(train_set, val_set, features, der_var[2])
-    
-    results.append({
-        "Iteration": 0,
-        "Performance": [base_score_all, base_score_car, base_score_pul],
-        "Train Clusters": [],
-        "Val Clusters": [],
-        "Train Cost": None,
-        "Val Cost": None
-    })
+    print(f"Starting k-modes tuning from k={s_cluster} to {n_cluster - 1} on train_set only...")
 
-    def run_trial(i):
-        print(f"Starting trial {i}")
-        
-        # Run k-modes clustering for train and val sets
-        tdf_out, kmodename, train_cost = j_process.run_kmodes_cluster(train_set, features, n_clusters=i, verbose=0)
-        vdf_out, kmodename2, val_cost = j_process.run_kmodes_cluster(val_set, features, n_clusters=i, verbose=0)
+    def run_single_trial(k):
+        _, _, train_cost = j_process.run_kmodes_cluster(train_set, features, n_clusters=k, verbose=0)
+        return train_cost
 
-        # Prepare new features including the clustering result for logistic model (optional)
-        tfeatures = features.copy() + [kmodename]
+    def run_trials_for_k(k):
+        print(f"Running k={k} ({n_trials} trials)...")
+        if use_multiprocessing:
+            train_costs = Parallel(n_jobs=cores, backend="loky")(
+                delayed(run_single_trial)(k) for _ in range(n_trials)
+            )
+        else:
+            train_costs = [run_single_trial(k) for _ in range(n_trials)]
 
-        # (Optional): Evaluate performance if desired here
-        # perf_all = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[0])
-        # perf_car = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[1])
-        # perf_pul = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[2])
-        # performance = [perf_all, perf_car, perf_pul]
-
-        print(f"Finished trial {i}")
+        avg_train_cost = np.mean(train_costs)
+        print(f"✓ k={k} | Avg Train Cost: {avg_train_cost:.2f}")
         return {
-            "Iteration": i,
-            "Performance": [],
-            "Train Clusters": tdf_out[kmodename].tolist(),
-            "Val Clusters": vdf_out[kmodename2].tolist(),
-            "Train Cost": train_cost,
-            "Val Cost": val_cost
+            "Clusters": k,
+            "AvgTrainCost": avg_train_cost,
+            "AllTrainCosts": train_costs
         }
 
-    print("Beginning Trials")
-    if use_multiprocessing:
-        print(f"Running in parallel with {cores} cores.")
-        parallel_results = Parallel(n_jobs=cores, backend="loky")(
-            delayed(run_trial)(i) for i in range(2, n_cluster)
-        )
-        results.extend(parallel_results)
-    else:
-        print("Running sequentially.")
-        for i in range(2, n_cluster):
-            results.append(run_trial(i))
+    # Loop over values of k sequentially
+    for k in range(s_cluster, n_cluster):
+        results.append(run_trials_for_k(k))
 
     return results
-
 
 def print_trial_status(i, accs, total=None, elapsed=None):
     clear_output(wait=True)
@@ -105,46 +81,39 @@ def print_trial_status(i, accs, total=None, elapsed=None):
     if elapsed is not None:
         print(f"  Elapsed Time: {elapsed:.1f}s")
 
-def tflow_tune(train_set, val_set, features, n_cluster=64):
+def tflow_tune(train_set, features, s_cluster=2, n_cluster=64, n_trials=5):
     results = []
-    der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
-    print("Starting Baseline...")
-    base_score_all = j_process.run_logistic_model(train_set, val_set, features, der_var[0])
-    base_score_car = j_process.run_logistic_model(train_set, val_set, features, der_var[1])
-    base_score_pul = j_process.run_logistic_model(train_set, val_set, features, der_var[2])
-
-    results.append({
-        "Iteration": 0,
-        "Performance": [base_score_all, base_score_car, base_score_pul],
-        "Train Clusters": [],
-        "Val Clusters": []
-    })
-
+    print("Starting silhouette trials...")
     start_time = time.time()
 
-    for i in range(2, n_cluster):
-        tdf_out, kmodename = j_process.run_tf_clustering(train_set, features, n_clusters=i, verbose=0)
-        vdf_out, kmodename2 = j_process.run_tf_clustering(val_set, features, n_clusters=i, verbose=0)
+    for k in range(s_cluster, n_cluster):
+        sils = []
 
-        tfeatures = features.copy() + [kmodename]
+        for trial in range(1, n_trials + 1):
+            tdf_out, kmodename, t_encoded = j_process.run_tf_clustering(train_set, features, n_clusters=k, verbose=0)
+            silhouette = silhouette_score(t_encoded, tdf_out[kmodename])
+            sils.append(silhouette)
 
-        all_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[0])
-        car_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[1])
-        pul_acc_score = j_process.run_logistic_model(tdf_out, vdf_out, tfeatures, der_var[2])
+            elapsed = time.time() - start_time
+            clear_output(wait=True)
+            print(f"k = {k} | Trial {trial}/{n_trials}")
+            print(f"  Current Silhouette: {silhouette:.4f}")
+            print(f"  Elapsed Time: {elapsed:.1f}s")
 
-        elapsed = time.time() - start_time
-        print_trial_status(i, [all_acc_score, car_acc_score, pul_acc_score], total=n_cluster - 1, elapsed=elapsed)
+        avg_sil = np.mean(sils)
+        clear_output(wait=True)
+        print(f"k = {k} completed")
+        print(f"  Avg Silhouette: {avg_sil:.4f}")
+        print(f"  Elapsed Time: {time.time() - start_time:.1f}s")
 
         results.append({
-            "Iteration": i,
-            "Performance": [all_acc_score, car_acc_score, pul_acc_score],
-            "Train Clusters": tdf_out[kmodename].tolist(),
-            "Val Clusters": vdf_out[kmodename2].tolist()
+            "Clusters": k,
+            "AvgSilhouette": avg_sil,
+            "AllSilhouettes": sils
         })
 
     return results
-
 
 import matplotlib.pyplot as plt
 import pandas as pd
