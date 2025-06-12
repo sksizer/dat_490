@@ -118,7 +118,7 @@ def tflow_tune(train_set, features, s_cluster=2, n_cluster=64, n_trials=5):
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def plot_kmode_elbow(df, train_col="Train Cost", val_col="Val Cost", iteration_col="Iteration"):
+def plot_kmode_elbow(df, train_col="AvgTrainCost",  iteration_col="Clusters"):
     """
     Plot the elbow curve from a tuning result DataFrame.
 
@@ -135,8 +135,7 @@ def plot_kmode_elbow(df, train_col="Train Cost", val_col="Val Cost", iteration_c
     plt.figure(figsize=(8, 5))
     plt.plot(df_plot[iteration_col], df_plot[train_col], marker='o', label='Train Cost')
 
-    if val_col in df_plot.columns and df_plot[val_col].notna().any():
-        plt.plot(df_plot[iteration_col], df_plot[val_col], marker='s', linestyle='--', label='Val Cost')
+\
 
     plt.xlabel('Number of Clusters (k)')
     plt.ylabel('Cost (Mismatch Count)')
