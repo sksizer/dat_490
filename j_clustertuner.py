@@ -3,7 +3,8 @@ from IPython.display import clear_output
 import time
 import psutil
 import os
-
+import matplotlib.pyplot as plt
+import pandas as pd
 # Logical IDs for P-cores (assuming 0-15 = 8 P-cores x 2 threads)
 p_core_ids = list(range(0, 16))
 
@@ -36,7 +37,7 @@ def resolve_cores(cores):
 
 from joblib import Parallel, delayed
 
-def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="50%", n_cluster=64):
+def kmode_tune(train_set, val_set, features, use_multiprocessing=True, cores="50%", n_cluster=1024):
     results = []
     der_var = ["ALL_CHRONIC", "ALL_CARDIAC", "ALL_PUL"]
 
@@ -143,3 +144,35 @@ def tflow_tune(train_set, val_set, features, n_cluster=64):
         })
 
     return results
+
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def plot_kmode_elbow(df, train_col="Train Cost", val_col="Val Cost", iteration_col="Iteration"):
+    """
+    Plot the elbow curve from a tuning result DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame with 'Iteration', 'Train Cost', and optionally 'Val Cost'.
+        train_col (str): Column name for training cost.
+        val_col (str): Column name for validation cost.
+        iteration_col (str): Column with cluster counts (e.g., 2 to N).
+    """
+    # Drop the baseline (Iteration 0) and any rows with NaNs
+    df_plot = df[df[iteration_col] > 0].copy()
+    df_plot = df_plot.dropna(subset=[train_col])
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_plot[iteration_col], df_plot[train_col], marker='o', label='Train Cost')
+
+    if val_col in df_plot.columns and df_plot[val_col].notna().any():
+        plt.plot(df_plot[iteration_col], df_plot[val_col], marker='s', linestyle='--', label='Val Cost')
+
+    plt.xlabel('Number of Clusters (k)')
+    plt.ylabel('Cost (Mismatch Count)')
+    plt.title('Elbow Curve for KModes Clustering')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()

@@ -1,4 +1,8 @@
 import pandas as pd
+
+from pathlib import Path
+
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
@@ -347,3 +351,63 @@ def resp_tally2(df, colnames="all", max_rows=10):
 
     final = pd.concat(tables, axis=1)
     display(final)
+from pathlib import Path
+import pandas as pd
+import numpy as np
+
+def clean_nested_objects(entry):
+    def fix_value(v):
+        if isinstance(v, pd.Series) or isinstance(v, np.ndarray):
+            return v.tolist()
+        return v
+    return {k: fix_value(v) for k, v in entry.items()}
+
+
+def clean_nested_objects(entry):
+    def fix_value(v):
+        if isinstance(v, pd.Series) or isinstance(v, np.ndarray):
+            return v.tolist()
+        return v
+    return {k: fix_value(v) for k, v in entry.items()}
+
+def save_if_missing(data, file_path, name=""):
+    """
+    Save data to Parquet using p_save if the file doesn't exist.
+
+    Args:
+        data (list of dicts or DataFrame): Data to save.
+        file_path (str or Path): Output file path.
+        name (str): Optional label for print messages.
+    """
+    file_path = Path(file_path)
+
+    label = f"[{name}] " if name else ""
+
+    if file_path.exists():
+        print(f"{label}File already exists: {file_path}")
+        return
+
+    print(f"{label}Save not found, saving to {file_path}...")
+
+    # Clean and convert if not already a DataFrame
+    if isinstance(data, pd.DataFrame):
+        df = data
+    else:
+        data_clean = [clean_nested_objects(item) for item in data]
+        df = pd.DataFrame(data_clean)
+
+    # Use the provided p_save function to write the file
+    p_save(df)  # uses default params, but you can override if needed
+
+    print(f"{label}Saved successfully.")
+
+def p_save(df, file_path=None, engine="pyarrow", compression="BROTLI", compression_level=11, index=False):
+    if file_path is None:
+        raise ValueError("file_path must be provided to p_save")
+    df.to_parquet(
+        file_path,
+        engine=engine,
+        compression=compression,
+        compression_level=compression_level,
+        index=index
+    )
