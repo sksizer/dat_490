@@ -144,3 +144,45 @@ def plot_kmode_elbow(df, train_col="AvgTrainCost",  iteration_col="Clusters"):
     plt.legend()
     plt.tight_layout()
     plt.show()
+def analyze_silhouette_scores(results, top_n=5):
+    """
+    Analyzes silhouette scores from tflow_tune results.
+    
+    Parameters:
+        results (list of dict): Output from tflow_tune(), each dict should contain:
+            - 'Clusters': int
+            - 'AvgSilhouette': float
+        top_n (int): How many top scoring k values to return (default = 5)
+    
+    Returns:
+        best_k (int): Cluster count with highest average silhouette score
+        best_score (float): The highest silhouette score
+        top_k_scores (list of tuples): Top-N (k, score) pairs sorted by score descending
+    """
+
+    ks = [r["Clusters"] for r in results]
+    scores = [r["AvgSilhouette"] for r in results]
+
+    # Plot silhouette vs. k
+    plt.figure(figsize=(10, 5))
+    plt.plot(ks, scores, marker='o')
+    plt.title("Average Silhouette Score by Number of Clusters (k)")
+    plt.xlabel("Number of Clusters (k)")
+    plt.ylabel("Average Silhouette Score")
+    plt.grid(True)
+    plt.show()
+
+    # Find best k
+    best_index = scores.index(max(scores))
+    best_k = ks[best_index]
+    best_score = scores[best_index]
+
+    # Top-N k values sorted by score
+    top_k_scores = sorted(zip(ks, scores), key=lambda x: x[1], reverse=True)[:top_n]
+
+    print(f"✅ Best k: {best_k} with silhouette score = {best_score:.4f}")
+    print(f"📈 Top {top_n} k values:")
+    for k, s in top_k_scores:
+        print(f"  k = {k}, score = {s:.4f}")
+
+    return best_k, best_score, top_k_scores
