@@ -144,24 +144,23 @@ def plot_kmode_elbow(df, train_col="AvgTrainCost",  iteration_col="Clusters"):
     plt.legend()
     plt.tight_layout()
     plt.show()
-def analyze_silhouette_scores(results, top_n=5):
+def analyze_silhouette_scores(results_df, top_n=5):
     """
-    Analyzes silhouette scores from tflow_tune results.
-    
+    Analyzes silhouette scores from tflow_tune results passed as a DataFrame.
+
     Parameters:
-        results (list of dict): Output from tflow_tune(), each dict should contain:
-            - 'Clusters': int
-            - 'AvgSilhouette': float
+        results_df (pd.DataFrame): DataFrame with at least columns:
+            - 'Clusters' (int)
+            - 'AvgSilhouette' (float)
         top_n (int): How many top scoring k values to return (default = 5)
-    
+
     Returns:
         best_k (int): Cluster count with highest average silhouette score
         best_score (float): The highest silhouette score
         top_k_scores (list of tuples): Top-N (k, score) pairs sorted by score descending
     """
-
-    ks = [r["Clusters"] for r in results]
-    scores = [r["AvgSilhouette"] for r in results]
+    ks = results_df["Clusters"].tolist()
+    scores = results_df["AvgSilhouette"].tolist()
 
     # Plot silhouette vs. k
     plt.figure(figsize=(10, 5))
