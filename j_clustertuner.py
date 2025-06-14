@@ -179,8 +179,8 @@ def analyze_silhouette_scores(results_df, top_n=5):
     # Top-N k values sorted by score
     top_k_scores = sorted(zip(ks, scores), key=lambda x: x[1], reverse=True)[:top_n]
 
-    print(f"✅ Best k: {best_k} with silhouette score = {best_score:.4f}")
-    print(f"📈 Top {top_n} k values:")
+    print(f"Best k: {best_k} with silhouette score = {best_score:.4f}")
+    print(f"Top {top_n} k values:")
     for k, s in top_k_scores:
         print(f"  k = {k}, score = {s:.4f}")
 
