@@ -216,6 +216,11 @@ def plot_yes_no_by_cluster(df, cluster_col, binary_features, yes_value='Yes'):
         plt.show()
 
 __docstrings__['plot_yes_no_by_cluster'] = plot_yes_no_by_cluster.__doc__
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pandas as pd
+
 def run_logistic_model(
     df_train,
     df_val,
@@ -227,27 +232,10 @@ def run_logistic_model(
     max_iter=1000,
     encoder_drop=None,
     encoder_dtype=None,
-    encoder_min_frequency=None
+    encoder_min_frequency=None,
+    average='binary',
+    class_weight='balanced'
 ):
-    """
-    Train and evaluate a logistic regression classifier using one-hot encoding.
-
-    Args:
-        df_train (DataFrame): Training set.
-        df_val (DataFrame): Validation set.
-        features (list): List of categorical feature column names.
-        target (str): Target column name.
-        C (float): Inverse of regularization strength. Smaller values specify stronger regularization.
-        penalty (str): Norm used in the penalization ('l1', 'l2', 'elasticnet', or 'none').
-        solver (str): Algorithm to use in the optimization problem ('liblinear', 'lbfgs', etc.).
-        max_iter (int): Maximum number of iterations taken for the solvers to converge.
-        encoder_drop (str or None): Strategy to drop one of the categories per feature ('first', 'if_binary', or None).
-        encoder_dtype (np.dtype or None): Desired dtype of the encoded output.
-        encoder_min_frequency (int, float, or None): Minimum frequency for a category to be included.
-        
-    Returns:
-        float: Accuracy on the validation set.
-    """
     encoder = OneHotEncoder(
         sparse_output=False,
         handle_unknown='ignore',
@@ -259,20 +247,42 @@ def run_logistic_model(
     X_train = encoder.fit_transform(df_train[features].astype(str))
     X_val = encoder.transform(df_val[features].astype(str))
 
+    # Handle string or object targets by mapping to 0/1
     y_train = df_train[target]
     y_val = df_val[target]
+
+    if y_train.dtype == 'object' or isinstance(y_train.iloc[0], str):
+        unique_vals = sorted(y_train.dropna().unique())
+        if len(unique_vals) != 2:
+            raise ValueError(f"Target column must be binary. Found: {unique_vals}")
+        target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
+        y_train = y_train.map(target_map)
+        y_val = y_val.map(target_map)
+        print(f"Target mapped as: {target_map}")
+    else:
+        target_map = None  # already numeric
 
     model = LogisticRegression(
         C=C,
         penalty=penalty,
         solver=solver,
-        max_iter=max_iter
+        max_iter=max_iter,
+        class_weight=class_weight
     )
 
     model.fit(X_train, y_train)
-    accuracy = accuracy_score(y_val, model.predict(X_val))
-    print(f"Validation Accuracy: {accuracy:.4f}")
-    return accuracy
+    y_pred = model.predict(X_val)
+
+    results = {
+        "accuracy": accuracy_score(y_val, y_pred),
+        "precision": precision_score(y_val, y_pred, average=average, pos_label=1, zero_division=0),
+        "recall": recall_score(y_val, y_pred, average=average, pos_label=1, zero_division=0),
+        "f1_score": f1_score(y_val, y_pred, average=average, pos_label=1, zero_division=0)
+    }
+
+    print(f"Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
+    return results
+
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
 def save_if_changed(data, filename, verbose=True):
     file_path = Path(filename)

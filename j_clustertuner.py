@@ -143,6 +143,7 @@ def plot_kmode_elbow(df, train_col="AvgTrainCost",  iteration_col="Clusters"):
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
+    plt.savefig("Kmode_elbow.jpg", format='jpg', dpi=300)
     plt.show()
 def analyze_silhouette_scores(results_df, top_n=5):
     """
@@ -169,6 +170,7 @@ def analyze_silhouette_scores(results_df, top_n=5):
     plt.xlabel("Number of Clusters (k)")
     plt.ylabel("Average Silhouette Score")
     plt.grid(True)
+    plt.savefig("TFLOW_silhouette.jpg", format='jpg', dpi=300)
     plt.show()
 
     # Find best k
