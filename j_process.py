@@ -421,3 +421,159 @@ def p_save(df, file_path=None, engine="pyarrow", compression="BROTLI", compressi
         compression_level=compression_level,
         index=index
     )
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.utils.class_weight import compute_class_weight
+
+def run_tf_model(
+    df_train,
+    df_val,
+    features,
+    target,
+    hidden_layers=[64, 32],
+    dropout_rate=0.2,
+    epochs=30,
+    batch_size=32,
+    encoder_drop=None,
+    encoder_dtype=None,
+    encoder_min_frequency=None,
+    class_weight_mode='balanced'
+):
+    # One-hot encode features
+    encoder = OneHotEncoder(
+        sparse_output=False,
+        handle_unknown='ignore',
+        drop=encoder_drop,
+        dtype=encoder_dtype,
+        min_frequency=encoder_min_frequency
+    )
+    X_train = encoder.fit_transform(df_train[features].astype(str))
+    X_val = encoder.transform(df_val[features].astype(str))
+
+    # Convert target to 0/1 if needed
+    y_train = df_train[target]
+    y_val = df_val[target]
+
+    if y_train.dtype == 'object' or isinstance(y_train.iloc[0], str):
+        unique_vals = sorted(y_train.dropna().unique())
+        if len(unique_vals) != 2:
+            raise ValueError(f"Target must be binary. Found: {unique_vals}")
+        target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
+        y_train = y_train.map(target_map)
+        y_val = y_val.map(target_map)
+        print(f"Target mapped as: {target_map}")
+    y_train = y_train.astype('float32')
+    y_val = y_val.astype('float32')
+
+    # Compute class weights
+    if class_weight_mode == 'balanced':
+        weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+        class_weight = {i: w for i, w in enumerate(weights)}
+    else:
+        class_weight = None
+
+    # Build TensorFlow model
+    model = tf.keras.Sequential()
+    model.add(tf.keras.Input(shape=(X_train.shape[1],)))
+
+    for units in hidden_layers:
+        model.add(tf.keras.layers.Dense(units, activation='relu'))
+        model.add(tf.keras.layers.Dropout(dropout_rate))
+
+    model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+
+    model.compile(
+        optimizer='adam',
+        loss='binary_crossentropy',
+        metrics=[
+            tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+            tf.keras.metrics.Precision(name='precision'),
+            tf.keras.metrics.Recall(name='recall')
+        ]
+    )
+
+    model.fit(
+        X_train,
+        y_train,
+        validation_data=(X_val, y_val),
+        epochs=epochs,
+        batch_size=batch_size,
+        verbose=0,
+        class_weight=class_weight
+    )
+
+    y_pred_probs = model.predict(X_val).flatten()
+    y_pred = (y_pred_probs >= 0.5).astype(int)
+
+    results = {
+        "accuracy": accuracy_score(y_val, y_pred),
+        "precision": precision_score(y_val, y_pred, zero_division=0),
+        "recall": recall_score(y_val, y_pred, zero_division=0),
+        "f1_score": f1_score(y_val, y_pred, zero_division=0)
+    }
+
+    print(f"TF Model Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
+    return results
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import numpy as np
+
+def run_rf_model(
+    df_train,
+    df_val,
+    features,
+    target,
+    n_estimators=100,
+    max_depth=None,
+    random_state=42,
+    encoder_drop=None,
+    encoder_dtype=None,
+    encoder_min_frequency=None
+):
+    encoder = OneHotEncoder(
+        sparse_output=False,
+        handle_unknown='ignore',
+        drop=encoder_drop,
+        dtype=encoder_dtype,
+        min_frequency=encoder_min_frequency
+    )
+
+    X_train = encoder.fit_transform(df_train[features].astype(str))
+    X_val = encoder.transform(df_val[features].astype(str))
+
+    y_train = df_train[target]
+    y_val = df_val[target]
+
+    if y_train.dtype == 'object' or isinstance(y_train.iloc[0], str):
+        unique_vals = sorted(y_train.dropna().unique())
+        if len(unique_vals) != 2:
+            raise ValueError(f"Target must be binary. Found: {unique_vals}")
+        target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
+        y_train = y_train.map(target_map)
+        y_val = y_val.map(target_map)
+        print(f"Target mapped as: {target_map}")
+
+    clf = RandomForestClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=random_state,
+        class_weight='balanced'  # handle imbalance
+    )
+
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_val)
+
+    results = {
+        "accuracy": accuracy_score(y_val, y_pred),
+        "precision": precision_score(y_val, y_pred, zero_division=0),
+        "recall": recall_score(y_val, y_pred, zero_division=0),
+        "f1_score": f1_score(y_val, y_pred, zero_division=0)
+    }
+
+    print(f"RF Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
+    return results
