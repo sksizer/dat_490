@@ -1,3 +1,8 @@
+####Author: Jaime Kirk
+####Created: 6/2/25
+####Last Update: 6/15/25
+
+
 import j_process
 from IPython.display import clear_output
 import time
@@ -5,15 +10,17 @@ import psutil
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
-# Logical IDs for P-cores (assuming 0-15 = 8 P-cores x 2 threads)
-p_core_ids = list(range(0, 16))
+
+#p_core_ids = list(range(0, 16))
 
 # Set affinity for current process
-p = psutil.Process(os.getpid())
-p.cpu_affinity(p_core_ids)
+#p = psutil.Process(os.getpid())
+#p.cpu_affinity(p_core_ids)
 
 from joblib import Parallel, delayed
 from joblib import cpu_count
+
+
 
 def resolve_cores(cores):
     available = cpu_count()

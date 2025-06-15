@@ -87,29 +87,30 @@ def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_
     X_raw = df[feature_cols].astype(str).fillna("Missing")
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     X_encoded = encoder.fit_transform(X_raw)
-
+    ### build and run dimensionality reduction
     input_dim = X_encoded.shape[1]
     inputs = tf.keras.Input(shape=(input_dim,))
     encoded = tf.keras.layers.Dense(64, activation='relu')(inputs)
     bottleneck = tf.keras.layers.Dense(latent_dim, activation='relu')(encoded)
     decoded = tf.keras.layers.Dense(64, activation='relu')(bottleneck)
     outputs = tf.keras.layers.Dense(input_dim, activation='sigmoid')(decoded)
-
+    ####Kmeans on reduced dimensions
     autoencoder = tf.keras.Model(inputs, outputs)
     autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
     autoencoder.fit(X_encoded, X_encoded, epochs=epochs, batch_size=batch_size, verbose=verbose)
-
+    #####Start fitting cluster groupings
     encoder_model = tf.keras.Model(inputs, bottleneck)
     latent_features = encoder_model.predict(X_encoded,verbose=verbose)
-
+    
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     cluster_labels = kmeans.fit_predict(latent_features)
-
+    ####Automatically names column based on parameters (if not specified)
     if cluster_col_name is None:
         cluster_col_name = f"tf_n{n_clusters}_d{latent_dim}_e{epochs}"
-
+    #### add custer column
     df = df.copy()
     df[cluster_col_name] = cluster_labels
+    ####returns cluster column name for looping
     return df,cluster_col_name
 
 __docstrings__['run_tf_clustering'] = run_tf_clustering.__doc__
