@@ -1,7 +1,9 @@
+######Author: Jaime Kirk
+######Created: 6/2/25
+######Last updated:6/15/25
+
 import pandas as pd
-
 from pathlib import Path
-
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -114,6 +116,9 @@ __docstrings__['run_tf_clustering'] = run_tf_clustering.__doc__
 
 
 # Cluster Overlap Plot
+## This plot allows comparison between cluster outputs of different methods.
+### A heatmap comparing quantities of observations in each cluster
+## Intended to show the difference between tflow clustering and KMODE
 def plot_cluster_overlap(df, cluster_col1, cluster_col2, title="Cluster Overlap",
                          xlabel=None, ylabel=None, cmap='Blues',
                          save_path=None, dpi=300, show_plot=True):
@@ -145,11 +150,15 @@ def plot_cluster_overlap(df, cluster_col1, cluster_col2, title="Cluster Overlap"
         plt.show()
     else:
         plt.close()
-
+### used for help() function
 __docstrings__['plot_cluster_overlap'] = plot_cluster_overlap.__doc__
 
 
 # Feature Distribution Comparison
+#This shows the distribution of responses by cluster. 
+#Used to show the difference between kmode and tflow clustering***
+#*** only gives a decent output if the same "K" value is used***
+# *Note* EVERY kmode and tflow run is slightly different, as they use a random starting point
 def compare_feature_distributions(df1, df2, features, label1='Group A', label2='Group B',
                                   normalize=True, save_prefix=None, show_plot=True, figsize=(8, 4)):
     """
@@ -220,7 +229,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import pandas as pd
-
+### Runs the logistic model
 def run_logistic_model(
     df_train,
     df_val,
@@ -247,7 +256,7 @@ def run_logistic_model(
     X_train = encoder.fit_transform(df_train[features].astype(str))
     X_val = encoder.transform(df_val[features].astype(str))
 
-    # Handle string or object targets by mapping to 0/1
+    
     y_train = df_train[target]
     y_val = df_val[target]
 
@@ -260,7 +269,7 @@ def run_logistic_model(
         y_val = y_val.map(target_map)
         print(f"Target mapped as: {target_map}")
     else:
-        target_map = None  # already numeric
+        target_map = None 
 
     model = LogisticRegression(
         C=C,
@@ -284,6 +293,10 @@ def run_logistic_model(
     return results
 
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
+
+
+#### Helper function to check an existing saved file.
+# Compares saved data to data in memory to decided if the file needs to be resaved or not
 def save_if_changed(data, filename, verbose=True):
     file_path = Path(filename)
 
@@ -326,6 +339,8 @@ def save_if_changed(data, filename, verbose=True):
     )
     if verbose:
         print(f"Saved: {filename}")
+
+#### Used in EDA, outputs basic information about each feature
 def resp_tally(df, colnames="all"):
     if colnames == "all":
         colnames = df.columns
@@ -340,9 +355,7 @@ def resp_tally(df, colnames="all"):
 from IPython.display import display, Markdown
 import pandas as pd
 
-import pandas as pd
-from IPython.display import display
-
+####Slightly different tally function
 def resp_tally2(df, colnames="all", max_rows=10):
     if colnames == "all":
         colnames = df.columns
@@ -365,6 +378,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+####Used to convert nested lists for saving as DataFrame
 def clean_nested_objects(entry):
     def fix_value(v):
         if isinstance(v, pd.Series) or isinstance(v, np.ndarray):
@@ -373,13 +387,7 @@ def clean_nested_objects(entry):
     return {k: fix_value(v) for k, v in entry.items()}
 
 
-def clean_nested_objects(entry):
-    def fix_value(v):
-        if isinstance(v, pd.Series) or isinstance(v, np.ndarray):
-            return v.tolist()
-        return v
-    return {k: fix_value(v) for k, v in entry.items()}
-
+####Checks to see if the file exists, and if not saves it
 def save_if_missing(data, file_path, name=""):
     """
     Save data to Parquet using p_save if the file doesn't exist.
@@ -410,7 +418,8 @@ def save_if_missing(data, file_path, name=""):
     p_save(df)  # uses default params, but you can override if needed
 
     print(f"{label}Saved successfully.")
-
+####Used in above function, or can be used on its own.
+####Mainly created to save typing
 def p_save(df, file_path=None, engine="pyarrow", compression="BROTLI", compression_level=11, index=False):
     if file_path is None:
         raise ValueError("file_path must be provided to p_save")
@@ -428,6 +437,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
 
+####Trains and runs tensorflow model
 def run_tf_model(
     df_train,
     df_val,
@@ -523,6 +533,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import numpy as np
 
+
+### Runs and Trains random forest model
 def run_rf_model(
     df_train,
     df_val,
