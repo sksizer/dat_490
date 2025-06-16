@@ -244,7 +244,9 @@ def run_logistic_model(
     encoder_dtype=None,
     encoder_min_frequency=None,
     average='binary',
-    class_weight='balanced'
+    class_weight='balanced',
+    plot_importance=False,
+    importance_filename=None
 ):
     encoder = OneHotEncoder(
         sparse_output=False,
@@ -257,7 +259,6 @@ def run_logistic_model(
     X_train = encoder.fit_transform(df_train[features].astype(str))
     X_val = encoder.transform(df_val[features].astype(str))
 
-    
     y_train = df_train[target]
     y_val = df_val[target]
 
@@ -291,8 +292,60 @@ def run_logistic_model(
     }
 
     print(f"Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
-    return results
 
+    if plot_importance:
+        # Get encoded and original feature names
+        encoded_feature_names = encoder.get_feature_names_out()
+        original_feature_names = encoder.feature_names_in_
+
+        # Map each encoded column back to original feature
+        feature_base_map = {
+            name: orig_feat
+            for orig_feat in original_feature_names
+            for name in encoded_feature_names
+            if name.startswith(orig_feat + '_') or name == orig_feat
+        }
+
+        # Build mapping table
+        coefs = np.abs(model.coef_[0])
+        feature_map_df = pd.DataFrame({
+            'EncodedFeature': encoded_feature_names,
+            'Importance': coefs
+        })
+        feature_map_df['OriginalFeature'] = feature_map_df['EncodedFeature'].map(feature_base_map)
+
+        # Group by original feature
+        combined_importance = (
+            feature_map_df.groupby("OriginalFeature")["Importance"]
+            .sum()
+            .reindex(features, fill_value=0)
+        )
+
+        # Plot
+        plt.figure(figsize=(10, 6))
+        bars = plt.barh(combined_importance.index, combined_importance.values)
+        plt.xlabel("Total Coefficient Magnitude")
+        plt.title(f"Feature Importance for Target: {target} (One per Original Feature)")
+        plt.gca().invert_yaxis()
+        plt.tight_layout()
+
+        # Annotate bars with values
+        for bar in bars:
+            width = bar.get_width()
+            plt.text(
+                width + 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{width:.3f}",
+                va='center',
+                ha='left',
+                fontsize=9
+            )
+
+        if importance_filename:
+            plt.savefig(importance_filename, format='jpg')
+        plt.show()
+
+    return results
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
 
 
