@@ -12,9 +12,12 @@ from kmodes.kmodes import KModes
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 import tensorflow as tf
 from IPython.display import display, Markdown
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.utils.class_weight import compute_class_weight
+
 #export TF_ENABLE_ONEDNN_OPTS=1
 __docstrings__ = {}
 import time
@@ -489,12 +492,6 @@ def p_save(df, file_path=None, engine="pyarrow", compression="BROTLI", compressi
         compression_level=compression_level,
         index=index
     )
-import numpy as np
-import pandas as pd
-import tensorflow as tf
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.utils.class_weight import compute_class_weight
 
 ####Trains and runs tensorflow model
 def run_tf_model(
@@ -634,7 +631,7 @@ def run_rf_model(
         max_depth=max_depth,
         random_state=random_state,
         class_weight='balanced',  # handle imbalance
-        n_jobs=4
+        n_jobs=8
     )
 
     clf.fit(X_train, y_train)
