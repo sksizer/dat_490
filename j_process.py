@@ -15,6 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 import tensorflow as tf
 from IPython.display import display, Markdown
+#export TF_ENABLE_ONEDNN_OPTS=1
 __docstrings__ = {}
 import time
 
@@ -632,7 +633,8 @@ def run_rf_model(
         n_estimators=n_estimators,
         max_depth=max_depth,
         random_state=random_state,
-        class_weight='balanced'  # handle imbalance
+        class_weight='balanced',  # handle imbalance
+        n_jobs=4
     )
 
     clf.fit(X_train, y_train)
