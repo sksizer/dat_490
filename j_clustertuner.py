@@ -78,7 +78,7 @@ def kmode_tune(train_set, features, s_cluster=2, n_cluster=256, n_trials=5, use_
         results.append(run_trials_for_k(k))
 
     return results
-
+### Helper to cleanup output
 def print_trial_status(i, accs, total=None, elapsed=None):
     clear_output(wait=True)
     print(f"Trial {i}/{total}" if total else f"Trial {i}")
