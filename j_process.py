@@ -1,7 +1,7 @@
 ######Author: Jaime Kirk
 ######Created: 6/2/25
-######Last updated:6/15/25
-
+######Last updated:6/17/25
+from IPython.display import clear_output
 import pandas as pd
 from pathlib import Path
 import numpy as np
@@ -16,6 +16,7 @@ from sklearn.metrics import accuracy_score
 import tensorflow as tf
 from IPython.display import display, Markdown
 __docstrings__ = {}
+import time
 
 def help(command=None):
     if command is None:
@@ -49,7 +50,7 @@ def run_kmodes_cluster(df, feature_cols, n_clusters=5, init_method='Huang',
         name of the new cluster column,
         and cost (sum of dissimilarities).
     """
-    print(f"Clustering on {len(feature_cols)} features: {feature_cols}")
+    #print(f"Clustering on {len(feature_cols)} features: {feature_cols}") just needed for debugging
     X_cluster = df[feature_cols].astype(str)
 
     km = KModes(n_clusters=n_clusters, init=init_method, n_init=n_init, verbose=verbose)
@@ -248,6 +249,11 @@ def run_logistic_model(
     plot_importance=False,
     importance_filename=None
 ):
+    if not plot_importance:
+        
+        clear_output(wait=True)
+    print(f"Running logistic regression for target: {target}:")
+
     encoder = OneHotEncoder(
         sparse_output=False,
         handle_unknown='ignore',
@@ -291,14 +297,14 @@ def run_logistic_model(
         "f1_score": f1_score(y_val, y_pred, average=average, pos_label=1, zero_division=0)
     }
 
-    print(f"Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
+    print(f"Validation Scores for {target} -> Accuracy: {results['accuracy']:.4f}, "
+          f"Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, "
+          f"F1: {results['f1_score']:.4f}")
 
     if plot_importance:
-        # Get encoded and original feature names
         encoded_feature_names = encoder.get_feature_names_out()
         original_feature_names = encoder.feature_names_in_
 
-        # Map each encoded column back to original feature
         feature_base_map = {
             name: orig_feat
             for orig_feat in original_feature_names
@@ -306,7 +312,6 @@ def run_logistic_model(
             if name.startswith(orig_feat + '_') or name == orig_feat
         }
 
-        # Build mapping table
         coefs = np.abs(model.coef_[0])
         feature_map_df = pd.DataFrame({
             'EncodedFeature': encoded_feature_names,
@@ -314,14 +319,12 @@ def run_logistic_model(
         })
         feature_map_df['OriginalFeature'] = feature_map_df['EncodedFeature'].map(feature_base_map)
 
-        # Group by original feature
         combined_importance = (
             feature_map_df.groupby("OriginalFeature")["Importance"]
             .sum()
             .reindex(features, fill_value=0)
         )
 
-        # Plot
         plt.figure(figsize=(10, 6))
         bars = plt.barh(combined_importance.index, combined_importance.values)
         plt.xlabel("Total Coefficient Magnitude")
@@ -329,7 +332,6 @@ def run_logistic_model(
         plt.gca().invert_yaxis()
         plt.tight_layout()
 
-        # Annotate bars with values
         for bar in bars:
             width = bar.get_width()
             plt.text(
@@ -344,8 +346,10 @@ def run_logistic_model(
         if importance_filename:
             plt.savefig(importance_filename, format='jpg')
         plt.show()
+    time.sleep(.1)
 
     return results
+
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
 
 
