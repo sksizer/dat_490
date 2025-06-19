@@ -694,4 +694,5 @@ def run_mca(train,features,n_components=27,random_state=42):
     mca = mca.fit(mset)
 
     X_reduced = mca.transform(mset)
+    X_reduced.columns = [f"mca_{i}" for i in range(X_reduced.shape[1])]
     return X_reduced
