@@ -1,6 +1,6 @@
 ####Author: Jaime Kirk
 ####Created: 6/2/25
-####Last Update: 6/15/25
+####Last Update: 6/18/25
 
 
 import j_process
@@ -150,7 +150,10 @@ def plot_kmode_elbow(df, train_col="AvgTrainCost",  iteration_col="Clusters"):
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("Kmode_elbow.jpg", format='jpg', dpi=300)
+    filename = "Kmode_elbow.jpg"
+    filename = os.path.join("images",filename)
+
+    plt.savefig(filename, format='jpg', dpi=300)
     plt.show()
 def analyze_silhouette_scores(results_df, top_n=5):
     """
@@ -177,7 +180,10 @@ def analyze_silhouette_scores(results_df, top_n=5):
     plt.xlabel("Number of Clusters (k)")
     plt.ylabel("Average Silhouette Score")
     plt.grid(True)
-    plt.savefig("TFLOW_silhouette.jpg", format='jpg', dpi=300)
+    filename = "TFLOW_silhouette.jpg"
+    filename = os.path.join("images",filename)
+    
+    plt.savefig(filename, format='jpg', dpi=300)
     plt.show()
 
     # Find best k
