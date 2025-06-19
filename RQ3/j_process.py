@@ -14,7 +14,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 import tensorflow as tf
 from IPython.display import display, Markdown
-
+from tensorflow.keras.callbacks import EarlyStopping
+import prince
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -104,7 +105,7 @@ def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_
     autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
     callbacks = []
     if use_early_stopping:
-        early_stop = EarlyStopping(
+        early_stop = tf.keras.callbacks.EarlyStopping(
             monitor='loss',
             patience=3,
             min_delta=0.001,
@@ -263,34 +264,42 @@ def run_logistic_model(
     importance_filename=None
 ):
     if not plot_importance:
-        
         clear_output(wait=True)
     print(f"Running logistic regression for target: {target}:")
 
-    encoder = OneHotEncoder(
-        sparse_output=False,
-        handle_unknown='ignore',
-        drop=encoder_drop,
-        dtype=encoder_dtype,
-        min_frequency=encoder_min_frequency
-    )
+    # Detect if features are already numeric
+    is_numeric = df_train[features].apply(lambda col: pd.api.types.is_numeric_dtype(col)).all()
 
-    X_train = encoder.fit_transform(df_train[features].astype(str))
-    X_val = encoder.transform(df_val[features].astype(str))
+
+    if is_numeric:
+        X_train = df_train[features].astype(np.float32).values
+        X_val = df_val[features].astype(np.float32).values
+        encoder = None
+    else:
+        encoder = OneHotEncoder(
+            sparse_output=False,
+            handle_unknown='ignore',
+            drop=encoder_drop,
+            dtype=encoder_dtype,
+            min_frequency=encoder_min_frequency
+        )
+        X_train = encoder.fit_transform(df_train[features].astype(str))
+        X_val = encoder.transform(df_val[features].astype(str))
 
     y_train = df_train[target]
     y_val = df_val[target]
 
-    if y_train.dtype == 'object' or isinstance(y_train.iloc[0], str):
+    # Handle string or boolean targets
+    if y_train.dtype == 'bool':
+        y_train = y_train.astype('int')
+        y_val = y_val.astype('int')
+    elif y_train.dtype == 'object' or isinstance(y_train.iloc[0], str):
         unique_vals = sorted(y_train.dropna().unique())
         if len(unique_vals) != 2:
             raise ValueError(f"Target column must be binary. Found: {unique_vals}")
         target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
         y_train = y_train.map(target_map)
         y_val = y_val.map(target_map)
-        #print(f"Target mapped as: {target_map}")
-    else:
-        target_map = None 
 
     model = LogisticRegression(
         C=C,
@@ -314,7 +323,7 @@ def run_logistic_model(
           f"Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, "
           f"F1: {results['f1_score']:.4f}")
 
-    if plot_importance:
+    if plot_importance and encoder is not None:
         encoded_feature_names = encoder.get_feature_names_out()
         original_feature_names = encoder.feature_names_in_
 
@@ -359,8 +368,8 @@ def run_logistic_model(
         if importance_filename:
             plt.savefig(importance_filename, format='jpg')
         plt.show()
-    time.sleep(.1)
 
+    #time.sleep(0.1)
     return results
 
 __docstrings__['run_logistic_model'] = run_logistic_model.__doc__
@@ -511,7 +520,7 @@ def run_tf_model(
     hidden_layers=[64, 32],
     dropout_rate=0.2,
     epochs=30,
-    batch_size=32,
+    batch_size=128,
     encoder_drop=None,
     encoder_dtype=None,
     encoder_min_frequency=None,
@@ -519,16 +528,23 @@ def run_tf_model(
     verbose=0,
     use_early_stopping=True
 ):
-    # One-hot encode features
-    encoder = OneHotEncoder(
-        sparse_output=False,
-        handle_unknown='ignore',
-        drop=encoder_drop,
-        dtype=encoder_dtype,
-        min_frequency=encoder_min_frequency
-    )
-    X_train = encoder.fit_transform(df_train[features].astype(str))
-    X_val = encoder.transform(df_val[features].astype(str))
+    # Check if features are already numeric (e.g., MCA output)
+    is_numeric = df_train[features].apply(lambda col: pd.api.types.is_numeric_dtype(col)).all()
+
+
+    if is_numeric:
+        X_train = df_train[features].astype(np.float32).values
+        X_val = df_val[features].astype(np.float32).values
+    else:
+        encoder = OneHotEncoder(
+            sparse_output=False,
+            handle_unknown='ignore',
+            drop=encoder_drop,
+            dtype=encoder_dtype,
+            min_frequency=encoder_min_frequency
+        )
+        X_train = encoder.fit_transform(df_train[features].astype(str))
+        X_val = encoder.transform(df_val[features].astype(str))
 
     # Convert target to 0/1 if needed
     y_train = df_train[target]
@@ -541,10 +557,9 @@ def run_tf_model(
         target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
         y_train = y_train.map(target_map)
         y_val = y_val.map(target_map)
-        #print(f"Target mapped as: {target_map}")
+
     y_train = y_train.astype('float32')
     y_val = y_val.astype('float32')
-
 
     if class_weight_mode == 'balanced':
         weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
@@ -571,8 +586,8 @@ def run_tf_model(
             tf.keras.metrics.Recall(name='recall')
         ]
     )
+
     callbacks = []
-    
     if use_early_stopping:
         early_stop = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
@@ -581,6 +596,7 @@ def run_tf_model(
             restore_best_weights=True
         )
         callbacks.append(early_stop)
+
     model.fit(
         X_train,
         y_train,
@@ -591,6 +607,7 @@ def run_tf_model(
         class_weight=class_weight,
         callbacks=callbacks if use_early_stopping else None
     )
+
     y_pred_probs = model.predict(X_val).flatten()
     y_pred = (y_pred_probs >= 0.5).astype(int)
 
@@ -667,14 +684,14 @@ def run_rf_model(
     print(f"RF Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
     return results
 def run_mca(train,features,n_components=27,random_state=42):
-    mset = df_train.drop(columns=combined_feat, inplace=False)
+    mset = train.drop(columns=features, inplace=False)
  
 
 
 
 
     mca = prince.MCA( n_components=n_components,random_state=random_state)
-    mca = mca.fit(m_set)
+    mca = mca.fit(mset)
 
-    X_reduced = mca.transform(m_set)
+    X_reduced = mca.transform(mset)
     return X_reduced
