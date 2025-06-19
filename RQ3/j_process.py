@@ -72,7 +72,7 @@ __docstrings__['run_kmodes_cluster'] = run_kmodes_cluster.__doc__
 
 # TF+KMeans Clustering
 def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_name=None,
-                      epochs=50, batch_size=512, verbose=0):
+                      epochs=50, batch_size=128, verbose=0,use_early_stopping=True):
     """
     Run TensorFlow autoencoder + KMeans clustering.
 
@@ -102,7 +102,16 @@ def run_tf_clustering(df, feature_cols, n_clusters=5, latent_dim=8, cluster_col_
     ####Kmeans on reduced dimensions
     autoencoder = tf.keras.Model(inputs, outputs)
     autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
-    autoencoder.fit(X_encoded, X_encoded, epochs=epochs, batch_size=batch_size, verbose=verbose)
+    callbacks = []
+    if use_early_stopping:
+        early_stop = EarlyStopping(
+            monitor='loss',
+            patience=3,
+            min_delta=0.001,
+            restore_best_weights=True
+        )
+    callbacks.append(early_stop)
+    autoencoder.fit(X_encoded, X_encoded, epochs=epochs, batch_size=batch_size, verbose=verbose,callbacks=callbacks if use_early_stopping else None)
     #####Start fitting cluster groupings
     encoder_model = tf.keras.Model(inputs, bottleneck)
     latent_features = encoder_model.predict(X_encoded,verbose=verbose)
@@ -279,7 +288,7 @@ def run_logistic_model(
         target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
         y_train = y_train.map(target_map)
         y_val = y_val.map(target_map)
-        print(f"Target mapped as: {target_map}")
+        #print(f"Target mapped as: {target_map}")
     else:
         target_map = None 
 
@@ -506,7 +515,9 @@ def run_tf_model(
     encoder_drop=None,
     encoder_dtype=None,
     encoder_min_frequency=None,
-    class_weight_mode='balanced'
+    class_weight_mode='balanced',
+    verbose=0,
+    use_early_stopping=True
 ):
     # One-hot encode features
     encoder = OneHotEncoder(
@@ -530,11 +541,11 @@ def run_tf_model(
         target_map = {unique_vals[0]: 0, unique_vals[1]: 1}
         y_train = y_train.map(target_map)
         y_val = y_val.map(target_map)
-        print(f"Target mapped as: {target_map}")
+        #print(f"Target mapped as: {target_map}")
     y_train = y_train.astype('float32')
     y_val = y_val.astype('float32')
 
-    # Compute class weights
+
     if class_weight_mode == 'balanced':
         weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
         class_weight = {i: w for i, w in enumerate(weights)}
@@ -560,17 +571,26 @@ def run_tf_model(
             tf.keras.metrics.Recall(name='recall')
         ]
     )
-
+    callbacks = []
+    
+    if use_early_stopping:
+        early_stop = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=3,
+            min_delta=0.001,
+            restore_best_weights=True
+        )
+        callbacks.append(early_stop)
     model.fit(
         X_train,
         y_train,
         validation_data=(X_val, y_val),
         epochs=epochs,
         batch_size=batch_size,
-        verbose=0,
-        class_weight=class_weight
+        verbose=verbose,
+        class_weight=class_weight,
+        callbacks=callbacks if use_early_stopping else None
     )
-
     y_pred_probs = model.predict(X_val).flatten()
     y_pred = (y_pred_probs >= 0.5).astype(int)
 
@@ -646,3 +666,15 @@ def run_rf_model(
 
     print(f"RF Validation Scores -> Accuracy: {results['accuracy']:.4f}, Precision: {results['precision']:.4f}, Recall: {results['recall']:.4f}, F1: {results['f1_score']:.4f}")
     return results
+def run_mca(train,features,n_components=27,random_state=42):
+    mset = df_train.drop(columns=combined_feat, inplace=False)
+ 
+
+
+
+
+    mca = prince.MCA( n_components=n_components,random_state=random_state)
+    mca = mca.fit(m_set)
+
+    X_reduced = mca.transform(m_set)
+    return X_reduced
