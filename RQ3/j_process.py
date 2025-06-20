@@ -432,8 +432,7 @@ def resp_tally(df, colnames="all"):
 
 
 
-from IPython.display import display, Markdown
-import pandas as pd
+
 
 ####Slightly different tally function
 def resp_tally2(df, colnames="all", max_rows=10):
