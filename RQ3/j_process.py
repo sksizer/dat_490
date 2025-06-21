@@ -667,7 +667,7 @@ def run_rf_model(
         max_depth=max_depth,
         random_state=random_state,
         class_weight='balanced',  # handle imbalance
-        n_jobs=8
+        n_jobs=14
     )
 
     clf.fit(X_train, y_train)
