@@ -1,8 +1,16 @@
 # DAT490 Capstone Project Source Code
 
-## [RQ1](./RQ1/)
+## Research Question Sources
 
-## [RQ2](./RQ2/)
+### [RQ1 - Can we use Chronic Health Conditions to accurately predict Health Care Access?](./RQ1/)
 
-## [RQ3](./RQ3/)
+### [RQ2- Are there demographic clusters that are disproportionately affected by Chronic Health Conditions?](./RQ2/)
+
+### [RQ3 - Can unsupervised learning methods reveal distinct clusters that account for the bulk of Chronic Health Conditions?](./RQ3/) 
+
+
+
+
+
+
 
